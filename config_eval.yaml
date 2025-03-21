@@ -1,0 +1,43 @@
+run_label: "evalsavedmodel2"
+comment: "evalsavedmodel2"
+wandb-project: "TESA"
+eval.sim:       false
+eval.retrieval: false
+eval.sgg:       false
+eval.qa:        true
+
+eval.base_embeddings:
+  - image
+  - graph
+eval.qa.gqa.question_file: "val_balanced_questions.json" #"testdev_balanced_questions.json"
+eval.qa.statements: (set to rule or naive)
+eval.fast_estimate.lower_bound: true
+
+
+_overwrite_model_config_keys:  # when loading a model, the archived config is used but these values are overwritten.
+  - xspeed.num_workers
+  - xspeed.prefetch_factor
+  - OFFLINE
+  - eval.fast_estimate
+  - eval.also_on_train_data
+  - eval.fast_estimate.min_nodes
+  - eval.fast_estimate.max_nodes
+  - eval.fast_estimate.max_graphs
+  - eval.fast_estimate.lower_bound
+  - eval.base_embeddings
+  - eval.sgg
+  - eval.sgg.recalls
+  - eval.sgg.modes
+  - eval.sgg.initial_edges
+  - eval.sgg.link_acc
+  - eval.sgg.constrain
+  - eval.sgg.metrics
+  - eval.qa
+  - eval.qa.gqa.question_file
+  - eval.qa.statements
+  - eval.sim
+  - eval.retrieval
+  - eval.retrieval.k
+  - jobs
+  - run_label
+

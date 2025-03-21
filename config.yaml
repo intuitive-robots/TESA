@@ -1,0 +1,123 @@
+OFFLINE: True
+run_label: "DEBUG" # use run_label: "DEBUG" for debugging purposes.
+a_comment: "This is a demo run operating on a fraction of the dataset."
+wandb-project: "TESA"
+# livestats: false
+eval.sim:       true
+eval.retrieval: true
+eval.sgg:       false
+eval.qa:        false
+
+eval.fast_estimate: true 
+eval.fast_estimate.min_nodes: 1
+eval.fast_estimate.max_nodes: 25
+eval.fast_estimate.max_graphs: 300
+eval.also_on_train_data: false
+eval.base_embeddings:
+  - image
+  - graph
+eval.retrieval.k:
+  - 10
+  - 50
+  - 100
+eval.sgg.constrain:
+  #  unconstrained
+  - constrained
+eval.sgg.modes:
+  # - initial
+  - pair
+  # # - iter
+  # - refined2
+  # - refined3
+  # - refined4
+  - refined5
+  # - refined10
+  # - refined20
+eval.sgg.metrics:
+  # - link_acc
+  - recall
+  - mean_recall
+eval.sgg.recalls:
+  - 20
+  - 50
+  #- 100
+eval.sgg.initial_edges: "empty" # "empty", "random_with_none", "random_without_none"
+eval.qa.gqa.question_file: "val_balanced_questions.json" #"testdev_balanced_questions.json"
+eval.qa.statements: "rule" # "naive"
+# eval.qa.skip_types:
+#   - other
+
+jobs:
+  - train
+  - archive # archive the model, the config and the data split
+  - eval
+eval.fast_estimate.lower_bound: true   
+
+#### NON-overwritten keys:
+dataset:  vg # vg, gqa, psg
+dataset.base_embedding.from: image
+dataset.base_embedding.using: SigLIP # clip, SigLIP, DINOv2, ResNet-50
+
+loss: cos-align # MSE, MAE, cos-align
+loss_lambda: 0
+contrastive_loss: cos-cross # False | True | cos-margin | cos-cross
+contrastive_loss_lambda:  1
+epochs: 400
+learning_rate:  0.001 # .1 .01 .001 .0001
+
+train_split:  0.7
+
+
+architecture:  GraphEmbedder
+relation_is: node
+
+margin: 0.1 # (for margin contrastive loss)
+batch_size:  1000
+
+contrastive_temperature:  15  # Temperatur: "wirkungsradius" (for True contrastive loss)
+dropout:  0.1
+heads:  4
+initial_features:  clip_embedding # clip_embedding, clip_token, one_hot
+layer_type:  GIN # TransConv, GAT, GATv2, pool
+layer_type.res_norm: False
+lr_decay:  0.5
+lr_step_count: 6
+lr_warmup: true
+
+num_layer:  1
+hidden_dim: 512
+pool_type:  "max"
+seed:  0
+weight_decay:  0.0005
+  
+xspeed.num_workers: 6
+xspeed.prefetch_factor: 3
+
+_overwrite_model_config_keys:  # when loading a model, the archived config is used but these values are overwritten.
+  - xspeed.num_workers
+  - xspeed.prefetch_factor
+  - OFFLINE
+  - eval.fast_estimate
+  - eval.also_on_train_data
+  - eval.fast_estimate.min_nodes
+  - eval.fast_estimate.max_nodes
+  - eval.fast_estimate.max_graphs
+  - eval.fast_estimate.lower_bound
+  - eval.base_embeddings
+  - eval.sgg
+  - eval.sgg.recalls
+  - eval.sgg.modes
+  - eval.sgg.initial_edges
+  - eval.sgg.link_acc
+  - eval.sgg.constrain
+  - eval.sgg.metrics
+  - eval.qa
+  - eval.qa.gqa.question_file
+  - eval.qa.statements
+  - eval.qa.skip_types
+  - eval.sim
+  - eval.retrieval
+  - eval.retrieval.k
+  - jobs
+  - run_label
+
