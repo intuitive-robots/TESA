@@ -8,6 +8,7 @@ Install Conda.
 ### Environment 'cuda'
 Install the environment using:
 > conda env create -f condaenv_cuda.yaml
+
 > pip install git+https://github.com/openai/CLIP.git
 ### Environment 'p38' (only for voltron preprocessing)
 p38 uses python 3.8 and 
