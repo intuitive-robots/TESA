@@ -1,5 +1,6 @@
 # TESA: Task-Agnostic Embedding of Scene Graphs using Vision Alignment
 PyTorch implementation of the paper.
+![image](https://github.com/user-attachments/assets/fd6921e7-80b0-4d2f-81ba-89375277f9ab)
 
 ## Setup
 
