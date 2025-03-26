@@ -453,7 +453,7 @@ def clip_trio_pca(
     # PCA plot
     if export_plot:
         if not MODEL_STAMP:
-            MODEL_STAMP = trainer.config.get("run_label", "default")
+            MODEL_STAMP = trainer.config.get("run_label", "")
         fig = pca_vis_triangle(
             image_features, text_features, graph_features, view)
         guarantee_dir("out/figs")
