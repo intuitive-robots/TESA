@@ -5,6 +5,7 @@ __pycache__/
 wandb
 data/processed/*
 data/raw/*
+out/
 out_backup
 visualGenome/*
 local_config.yaml
