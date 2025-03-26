@@ -191,7 +191,7 @@ class Trainer:
         guarantee_dir("out/splits")
         # save model and config. Saved config needed for evaluation scripts.
         if not self.config.get("OFFLINE", False):
-            stamp = f"{datetime.now().strftime("%Y%m%d_%H%M%S")}_{self.config["dataset.base_embedding.using"]}_{self.config["dataset"]}_{self.config.get("run_label")}"
+            stamp = f"{datetime.now().strftime(" % Y % m % d_ % H % M % S")}_{self.config["dataset.base_embedding.using"]}_{self.config["dataset"]}_{self.config.get("run_label", "")}"
 
             torch.save(self.model.state_dict(), f"out/models/{stamp}")
             with open(f"out/configs/{stamp}", "w") as f:
