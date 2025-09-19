@@ -5,6 +5,9 @@ import einops
 import torch
 from tqdm import tqdm
 
+from src.eval.image_generation import eval_image_generation
+from src.eval.classification_eval import eval_classification
+from src.eval.image_captioning_eval import eval_image_captioning
 import src.data_handling.datasets as datasets
 from src.data_handling.datasethandler import rie_ds
 from src.data_handling.sg_parser import load_raw_train_val_test
@@ -16,6 +19,7 @@ from src.models.component_handler import similarity_from_config
 from src.util.util import (ds_base_embedding, get_split_keys, guarantee_dir,
                            img_to_y, text_to_y)
 from src.util.device import DEVICE
+from src.train_sgg import test_sgg_model, train_sgg_model
 
 DATA_BASE = os.getenv("DATA_DIR")
 
@@ -286,12 +290,7 @@ def downstream_all(
     print_predicate: output triples for qualitative evaluation.
     """
 
-    if replace_y_with_model_output:
-        with torch.no_grad():
-            restore_y = []
-            for g in dataset:
-                restore_y.append(g.y)
-                g.y = model(g.to(DEVICE))[0]
+    train_bool = False
 
     returndict = {}
     # TASK: similarity:
@@ -301,11 +300,12 @@ def downstream_all(
             returndict[f"output_similarity/{out_prefix}{k}"] = v
     # TASK: QA
     if config.get("eval.qa", False):
-        from src.eval.qa_eval import eval_qa
+        from src.eval.qa_eval import eval_qa, train_eval_qa_model
 
-        out = eval_qa(config, dataset)  # needs dataset.y for comparisons.
-        for k, v in out.items():
-            returndict[f"qa/{out_prefix}{k}"] = v
+        #out = eval_qa(config, dataset)  # needs dataset.y for comparisons.
+        out = train_eval_qa_model(config, dataset, train_bool, replace_y_with_model_output, model)
+        # for k, v in out.items():
+        #     returndict[f"qa/{out_prefix}{k}"] = v
     # TASK: retrieval:
     if config.get("eval.retrieval", False):
         retrieval_ks = config.get("eval.retrieval.k", [])
@@ -330,11 +330,23 @@ def downstream_all(
                 )
                 for k, v in out.items():
                     returndict[f"sgg/{out_prefix}{k}"] = v
-
+    # TASK: Classification
+    if config.get("eval.clas", False):
+        graph, img = eval_classification(model, dataset, config, config['batch_size'])
+        print(f"Classification using graphs: {graph}")
+        print(f"Classification using images: {img}")
+    # Evaluate Image Captioning
+    if config.get("eval.capt", False):
+        for i in [10, 50, 100]:
+            graph, img = eval_image_captioning(model, dataset, config, i, 5)
+            print(f"Captioning using graphs: {graph} for {i}")
+            print(f"Captioning using images: {img} for {i}")
+    if config.get("eval.gen", False):
+        eval_image_generation(model, dataset, config)
     # finish up.
-    if replace_y_with_model_output:
-        for g, y in zip(dataset, restore_y):
-            g.y = y
+    # if replace_y_with_model_output:
+    #     for g, y in zip(dataset, restore_y):
+    #         g.y = y
 
     return returndict
 
@@ -351,10 +363,33 @@ def eval(trainer, on_train_data=False):
     )
     tt_pref = "train" if on_train_data else "test"
     dataset = trainer.train_ds if on_train_data else trainer.test_ds
-    dataset = list(tqdm(dataset, desc=f"Loading {tt_pref} data for eval."))
+    #dataset = list(tqdm(dataset, desc=f"Loading {tt_pref} data for eval."))
     base_embeddings = trainer.config.get(
         "eval.base_embeddings", ["image", "graph"])
     print(f"---- Eval on {'train' if on_train_data else 'test'} data ----")
+    
+    if trainer.config.get("eval.capt", False):
+        dataset = psg_eval_dataset(
+            trainer.config.get("initial_features"),
+            trainer.model,
+            trainer.config,
+            "",
+            on_coco_captions="val",
+            stamp=trainer.load_model_name,
+        )
+        
+    if trainer.config.get("eval.train_sgg", False):
+        #train_sgg_model(trainer)
+        # test_sgg_model(trainer, "image", 1)
+        # test_sgg_model(trainer, "graph", 1)
+        test_sgg_model(trainer, "zero", 1)
+        # test_sgg_model(trainer, "image", 5)
+        # test_sgg_model(trainer, "graph", 5)
+        # test_sgg_model(trainer, "zero", 5)
+        
+    if trainer.config.get("eval.qa", False):
+        dataset = trainer.train_ds, trainer.test_ds
+    
     returndict = {}
     if "image" in base_embeddings:
         print("--- Eval on Images")

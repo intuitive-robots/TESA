@@ -17,6 +17,7 @@ DATA_BASE = os.getenv("DATA_DIR")
 
 def eval_saved():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--eval", action="store_true", help="bool for specifiying if we want to evaluate")
     parser.add_argument("--model", type=str, help="specify model to use")
     parser.add_argument("--similarity", action="store_true",
                         help="metric evaluation")

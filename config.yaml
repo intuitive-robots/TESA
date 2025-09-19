@@ -1,5 +1,5 @@
 OFFLINE: True
-run_label: "DEBUG" # use run_label: "DEBUG" for debugging purposes.
+run_label: "test" # use run_label: "DEBUG" for debugging purposes.
 a_comment: "This is a demo run operating on a fraction of the dataset."
 wandb-project: "TESA"
 # livestats: false

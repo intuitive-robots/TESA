@@ -49,6 +49,8 @@ class Trainer:
         self._init_model(load_model_name)
         self._init_stats()
 
+        self.load_model_name = load_model_name
+        
         # init loss
         self.loss_fn = loss_from_config(self.config)
         self.contrastive_loss_fn = contrastive_loss_from_config(

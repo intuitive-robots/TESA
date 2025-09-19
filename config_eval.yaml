@@ -4,19 +4,27 @@ wandb-project: "TESA"
 eval.sim:       false
 eval.retrieval: false
 eval.sgg:       false
-eval.qa:        true
+eval.qa:        false
+eval.clas:      false
+eval.capt:      false
+eval.gen:       false
+eval.train_sgg: True
 
 eval.base_embeddings:
   - image
-  - graph
+  #- graph
 eval.qa.gqa.question_file: "val_balanced_questions.json" #"testdev_balanced_questions.json"
-eval.qa.statements: (set to rule or naive)
+                                                          # "val_balanced_questions.json", "train_balanced_questions.json"
+eval.qa.statements: "naive"
 eval.fast_estimate.lower_bound: true
+eval.also_on_train_data: false
 
+batch_size: 16
 
 _overwrite_model_config_keys:  # when loading a model, the archived config is used but these values are overwritten.
   - xspeed.num_workers
   - xspeed.prefetch_factor
+  - batch_size
   - OFFLINE
   - eval.fast_estimate
   - eval.also_on_train_data

@@ -1,0 +1,32 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "7"
+            },
+            "args": [
+                "--eval",
+                "--model",
+                "TESA_SigLIP_PSG"
+                //"TESA_Clip_PSG"
+                //"TESA_SigLIP_VG150"
+                //"TESA_Clip_VG150"
+                //"TESA_DINOv2_VG150"
+                //"TESA_DINOv2_PSG"
+                //"TESA_Clip_GQA"
+                //"TESA_DINOv2_GQA"
+                //"TESA_SigLIP_GQA"
+            ]
+        }
+    ]
+}

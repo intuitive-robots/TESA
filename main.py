@@ -62,7 +62,10 @@ def multimain():
 if __name__ == "__main__":
     # check for --multimain
     import sys
-
+    import os
+    
+    os.environ["CUDA_VISIBLE_DEVICES"] = "7"
+    
     if "--multi" in sys.argv:
         multimain()
     elif "--eval" in sys.argv:

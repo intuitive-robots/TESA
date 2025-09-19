@@ -262,19 +262,230 @@ def load_raw_train_val_test(config, force_fnames_into_test):
         test = test[:debug_graph_count_limit]
     print(f"{len(train)} train, {len(val)} val, {len(test)} test items loaded.")
 
-    train_full = {
-        "data": train,
-        "obj_classes": obj_classes,
-        "predicate_classes": predicate_classes,
-    }
+    if config["eval.train_sgg"]:
+        if config['dataset'] == 'vg':
+            with open(f"/home/vquapil/masterarbeit-data/raw/vg/train.json", "r") as f:
+                bb_data = json.load(f)
+            train = get_bb_data(train, bb_data)
+            with open(f"/home/vquapil/masterarbeit-data/raw/vg/val.json", "r") as f:
+                bb_data = json.load(f)
+            val = get_bb_data(val, bb_data)
+            with open(f"/home/vquapil/masterarbeit-data/raw/vg/test.json", "r") as f:
+                bb_data = json.load(f)
+            test = get_bb_data(test, bb_data)
+        elif config['dataset'] == 'psg':
+            with open(f"/home/vquapil/masterarbeit-data/raw/psg/psg.json", "r") as f:
+                bb_data = json.load(f)
+            train, val, test = get_bb_data_psg(train + val + test, bb_data, len(train), len(val))
+        else:
+            print("Dataset for training SGG not implemented")
+    
+    if config["eval.clas"]:
+        with open(f"{DATA_DIR}/psg_captions/classification_coco.json", "r") as f:
+            class_data = json.load(f)
+        train_full = {
+            "data": train,
+            "obj_classes": obj_classes,
+            "predicate_classes": predicate_classes,
+            "classification_data": get_class_data(train, class_data)
+        }
+    else:
+        train_full = {
+            "data": train,
+            "obj_classes": obj_classes,
+            "predicate_classes": predicate_classes,
+        }
     val_full = {
         "data": val,
         "obj_classes": obj_classes,
         "predicate_classes": predicate_classes,
     }
-    test_full = {
-        "data": test,
-        "obj_classes": obj_classes,
-        "predicate_classes": predicate_classes,
-    }
+    if config["eval.clas"]:
+        with open(f"{DATA_DIR}/psg_captions/classification_coco.json", "r") as f:
+            class_data = json.load(f)
+        test_full = {
+            "data": test,
+            "obj_classes": obj_classes,
+            "predicate_classes": predicate_classes,
+            "classification_data": get_class_data(test, class_data)
+        }
+    else:
+        test_full = {
+            "data": test,
+            "obj_classes": obj_classes,
+            "predicate_classes": predicate_classes,
+        }
+    if config["eval.train_sgg"]:
+        train_full['train_sgg'] = []
+        val_full['train_sgg'] = []
+        test_full['train_sgg'] = []
+        
     return train_full, val_full, test_full
+
+def get_class_data(test, class_data):
+    classification_data = []
+    num = 0
+    for obj in test:
+        idx = str(int(obj["file_name"].split("/")[-1].split(".")[0]))
+        if idx not in class_data:
+            class_data[idx] = {
+                "category": -1,
+                "file_name": "",
+                "name": "",
+                "description": "",
+                "area": 0.0,
+                "label": -1
+            }
+            num += 1
+        classification_data.append(class_data[idx])
+    print(f"Missing classification labels {num}")
+    return classification_data
+
+def get_bb_data(data, bb_info):
+    whole_dict = {}
+    for i in range(len(data)):
+        whole_dict[int(data[i]["file_name"].split(".")[0])] = {
+            "relations": data[i]["relations"],
+            "nodes": data[i]["nodes"],
+            "height": 0,
+            "width": 0,
+            "bbox": [],
+            "relation_bbox_normalized": []
+        }
+    
+    for img in bb_info["images"]:
+        whole_dict[img['id']]["height"] = img["height"]
+        whole_dict[img["id"]]["width"] = img["width"]
+    
+    for an in bb_info["annotations"]:
+        bbox = an["bbox"]
+        whole_dict[an["image_id"]]["bbox"].append(bbox)
+        
+    for obj in whole_dict:
+        temp_list = []
+        for rel in whole_dict[obj]["relations"]:
+            temp_list.append([whole_dict[obj]["bbox"][rel[0]], whole_dict[obj]["bbox"][rel[1]]])
+        whole_dict[obj]['relation_bbox_normalized'] = xywh_to_cxcywh(normalize_boxes_xywh(temp_list, whole_dict[obj]["width"], whole_dict[obj]["height"]))
+    
+    for i in range(len(data)):
+        id = int(data[i]["file_name"].split(".")[0])
+        data[i]['relation_bbox_normalized'] = whole_dict[id]['relation_bbox_normalized']
+    return data
+
+def get_bb_data_psg(data, bb_info, train, val):
+    whole_dict = {}
+    index_to_remove = []
+    train_sub, val_sub = 0,0
+    for i in range(len(data)):
+        index = int(data[i]["file_name"].split(".")[0].split('/')[-1])
+        if index in whole_dict:
+            index_to_remove.append(i)
+            if i < train:
+                train_sub += 1
+            if i >= train and i < train+val:
+                val_sub += 1
+            continue
+        whole_dict[index] = {
+            "relations": data[i]["relations"],
+            "nodes": data[i]["nodes"],
+            "height": 0,
+            "width": 0,
+            "bbox": [],
+            "relation_bbox_normalized": []
+        }
+        
+    data = [v for i, v in enumerate(data) if i not in index_to_remove]
+    
+    train = train - train_sub
+    val = val - val_sub
+        
+    for obj in bb_info["data"]:
+        id = int(obj['coco_image_id'])
+        if id not in list(whole_dict.keys()):
+            continue
+        whole_dict[id]["height"] = obj["height"]
+        whole_dict[id]["width"] = obj["width"]
+    
+        for an in obj["annotations"]:
+            bbox = an["bbox"]
+            whole_dict[id]["bbox"].append(bbox)
+        
+    for obj in whole_dict:
+        temp_list = []
+        for rel in whole_dict[obj]["relations"]:
+            temp_list.append([whole_dict[obj]["bbox"][rel[0]], whole_dict[obj]["bbox"][rel[1]]])
+        whole_dict[obj]['relation_bbox_normalized'] = normalize_boxes_xyxy_to_cxcywh(temp_list, whole_dict[obj]["width"], whole_dict[obj]["height"])
+    
+    for i in range(len(data)):
+        id = int(data[i]["file_name"].split(".")[0].split('/')[-1])
+        data[i]['relation_bbox_normalized'] = whole_dict[id]['relation_bbox_normalized']
+    return data[:train], data[train:train+val], data[train+val:]
+    
+def normalize_boxes_xywh(boxes, img_w, img_h):
+    """
+    Normalize bounding boxes from [x, y, w, h] to [0,1].
+    boxes: list of [x, y, w, h]
+    img_w, img_h: image dimensions
+    returns: list of [x_norm, y_norm, w_norm, h_norm]
+    """
+    all = []
+    for box in boxes:
+        normalized = []
+        for x, y, w, h in box:
+            x_norm = max(0.0, min(1.0, x / img_w))
+            y_norm = max(0.0, min(1.0, y / img_h))
+            w_norm = max(0.0, min(1.0, w / img_w))
+            h_norm = max(0.0, min(1.0, h / img_h))
+            normalized.append([x_norm, y_norm, w_norm, h_norm])
+        all.append(normalized)
+    return all
+
+def normalize_boxes_xyxy_to_cxcywh(boxes, img_w, img_h):
+    """
+    Convert bounding boxes from [x1, y1, x2, y2] to normalized [cx, cy, w, h].
+    
+    boxes: list of lists (each box can be [[x1, y1, x2, y2], ...])
+    img_w, img_h: image dimensions
+    returns: list of normalized boxes [[cx, cy, w, h], ...] with values in [0,1]
+    """
+    all_normalized = []
+    for box_group in boxes:  # supports nested structure like your original
+        normalized_group = []
+        for x1, y1, x2, y2 in box_group:
+            # width and height in absolute pixels
+            w = x2 - x1
+            h = y2 - y1
+            # center coordinates in absolute pixels
+            cx = x1 + w / 2.0
+            cy = y1 + h / 2.0
+            # normalize everything
+            cx /= img_w
+            cy /= img_h
+            w /= img_w
+            h /= img_h
+            # clamp to [0, 1] for safety
+            cx = max(0.0, min(1.0, cx))
+            cy = max(0.0, min(1.0, cy))
+            w = max(0.0, min(1.0, w))
+            h = max(0.0, min(1.0, h))
+            normalized_group.append([cx, cy, w, h])
+        all_normalized.append(normalized_group)
+    return all_normalized
+
+
+def xywh_to_cxcywh(boxes):
+    """
+    Convert [x, y, w, h] boxes to [cx, cy, w, h].
+    boxes: list of normalized [x, y, w, h]
+    returns: list of [cx, cy, w, h]
+    """
+    all = []
+    for box in boxes:
+        converted = []
+        for x, y, w, h in box:
+            cx = x + w / 2.0
+            cy = y + h / 2.0
+            converted.append([cx, cy, w, h])
+        all.append(converted)
+    return all
+

@@ -13,7 +13,7 @@ YES_NO_STRUCTURAL_TYPES = ["verify", "logical", "yes/no"]
 W_QUESTION_STRUCTURAL_TYPES = ["query", "other"]
 
 
-def qa_tuples_to_question_collection(qa_tuples):
+def qa_tuples_to_question_collection(qa_tuples, given_answers=None):
     r"""
     Tuple:
      (question: str, answer: str, imageId: str (without .jpg), type)
@@ -29,7 +29,12 @@ def qa_tuples_to_question_collection(qa_tuples):
         part_filtered_tuples = [f for f in qa_tuples if f[3] == k]
         # more part-filtering!
 
-        answers = list(set([f[1] for f in part_filtered_tuples]))
+        if given_answers is None:
+            answers = list(set([f[1] for f in part_filtered_tuples]))
+            answers.sort()
+        else:
+            answers = given_answers[k]
+        
         if k in YES_NO_STRUCTURAL_TYPES:
             answers = ["yes", "no"]  # enforce order: yes -> 0, no -> 1
             filtered_tuples = [
@@ -49,6 +54,7 @@ def qa_tuples_to_question_collection(qa_tuples):
                 "answer_index": answers.index(f[1]),
             }
             for f in tqdm(filtered_tuples, "qa: load question tuples")
+            if f[1] in answers
         ]
         per_structural_type[k] = {
             "all_answers": answers,
@@ -82,13 +88,13 @@ def vqa_load_collection():
     return qa_tuples_to_question_collection(qa_tuples)
 
 
-def gqa_load_collection(fname):
+def gqa_load_collection(fname, answers=None):
     r"""
     Load questions from GQA dataset.
     @param fname: filename in raw/gqa/questions
     @return: {structural_type: {"all_answers": List[str], "data": List[{"question": str, "imageId": str, "answer_index": int}]}}
     """
-    with open(f"{DATA_BASE}/raw/gqa/questions/{fname}", "r") as f:
+    with open(f"/home/vquapil/masterarbeit-data/raw/gqa/questions/{fname}", "r") as f: # TODO
         qa_dicts = json.load(f)
     qa_tuples: list[FilteredQTuple] = [
         (qa["question"], qa["answer"], qa["imageId"], qa["types"]["structural"])
@@ -96,7 +102,7 @@ def gqa_load_collection(fname):
     ]
     # question_statistics(filtered, fname)
 
-    return qa_tuples_to_question_collection(qa_tuples)
+    return qa_tuples_to_question_collection(qa_tuples, answers)
 
 
 def filter_collection(question_collection, img_ids, filter_all_answers=True):
@@ -105,7 +111,9 @@ def filter_collection(question_collection, img_ids, filter_all_answers=True):
     """
     c = copy.deepcopy(question_collection)
     dropcount = 0
-    for k, v in c.items():
+    img_ids = set(img_ids)  # ✅ do this once
+
+    for k, v in tqdm(c.items(), "calculate dropcount"):
         oldlen = len(v["data"])
         v["data"] = [d for d in v["data"] if d["imageId"] in img_ids]
         dropcount += oldlen - len(v["data"])
@@ -117,6 +125,7 @@ def filter_collection(question_collection, img_ids, filter_all_answers=True):
                     set([v["all_answers"][d["answer_index"]]
                         for d in v["data"]])
                 )
+                answers.sort()
                 v["data"] = [
                     {
                         "question": d["question"],
@@ -124,6 +133,7 @@ def filter_collection(question_collection, img_ids, filter_all_answers=True):
                         "answer_index": answers.index(
                             v["all_answers"][d["answer_index"]]
                         ),
+                        "category": k
                     }
                     for d in v["data"]
                 ]

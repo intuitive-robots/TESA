@@ -11,8 +11,8 @@ from PIL import Image
 from torchvision.io import read_image
 from tqdm import tqdm
 
-from src.util.util_clip import ClipProcessor
-from src.util.util_siglip import SigLIPProcessor
+#from src.util.util_clip import ClipProcessor
+#from src.util.util_siglip import SigLIPProcessor
 from src.util.device import DEVICE
 load_dotenv()
 data_dir = os.getenv("DATA_DIR")

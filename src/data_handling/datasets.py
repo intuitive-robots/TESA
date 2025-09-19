@@ -1,5 +1,6 @@
 
 import os
+from pathlib import Path
 import random
 import clip
 import numpy as np
@@ -12,6 +13,7 @@ from tqdm import tqdm
 from src.util.util_clip import clip_model
 from src.data_handling.sg_parser import GQA, PSG, VG
 from src.util.device import DEVICE
+from PIL import Image
 from dotenv import load_dotenv
 load_dotenv()
 DATA_DIR = os.getenv("DATA_DIR")
@@ -46,6 +48,13 @@ class RelIsNodeUnifiedJsonDataset(Dataset):
         self.data = raw_data["data"]
         self.obj_classes = raw_data["obj_classes"]
         self.pred_classes = raw_data["predicate_classes"]
+        self.classification = False
+        self.sgg_train = False
+        if "classification_data" in list(raw_data.keys()):
+            self.classification = True
+            self.class_data = raw_data["classification_data"]
+        if "train_sgg" in list(raw_data.keys()):
+            self.sgg_train = True
 
         f_vec = build_node_features_rin(
             self.initial_features, self.obj_classes, self.pred_classes
@@ -80,6 +89,21 @@ class RelIsNodeUnifiedJsonDataset(Dataset):
             self.all_obj_vec,
             self.all_pred_vec,
         )
+        if self.classification:
+            graph.description = self.class_data[index]["description"]
+            graph.label = self.class_data[index]["label"]
+        if self.sgg_train:
+            graph.num_triplet = len(psg_g['relations'])
+            triplets = []
+            for rel in psg_g['relations']:
+                obj = psg_g['nodes'][rel[0]]
+                pred = rel[2]
+                sub = psg_g['nodes'][rel[1]]
+                triplets.append(torch.tensor([obj, pred, sub]))
+            graph.triplets = torch.stack(triplets)
+            graph.nodes = psg_g['nodes']
+            graph.bbox = torch.tensor(psg_g["relation_bbox_normalized"])
+            graph.image = Image.open(self.get_path(graph.file_name)).convert("RGB")
         return graph
 
     def __len__(self):
@@ -88,7 +112,24 @@ class RelIsNodeUnifiedJsonDataset(Dataset):
     def edges_dict_forward_backward(self):
         # TODO sgg for RiN
         return None  # sgg not supported for RiN.
+    
+    def get_path(self, filename):
+        if self.ds_name == 'vg':
+            folder1 = Path("/home/vquapil/masterarbeit-data/raw/vg/VG_100K")
+            folder2 = Path("/home/vquapil/masterarbeit-data/raw/vg/VG_100K_2")
 
+            # Check which folder contains the file
+            if (folder1 / filename).exists():
+                img_path = folder1 / filename
+            elif (folder2 / filename).exists():
+                img_path = folder2 / filename
+            else:
+                raise FileNotFoundError(f"{filename} not found in either folder")
+            return img_path
+        elif self.ds_name == "psg":
+            return Path("/home/vquapil/masterarbeit-data/raw/coco/" + filename)
+            
+            
 
 def build_node_features_rin(initial_feature_mode, objects, predicates):
     r"""

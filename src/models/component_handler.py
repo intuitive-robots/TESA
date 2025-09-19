@@ -91,9 +91,9 @@ def contrastive_loss_from_config(config):
     return get_loss(contrastive, config)
 
 
-def qa_collection(config):
+def qa_collection(config, answers=None):
     if config["dataset"] == "gqa":
-        return gqa_load_collection(config["eval.qa.gqa.question_file"])
+        return gqa_load_collection(config["eval.qa.gqa.question_file"], answers)
     if config["dataset"] == "psg":
         return vqa_load_collection()
     else:
